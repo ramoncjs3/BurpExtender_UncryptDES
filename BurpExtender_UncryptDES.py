@@ -1,4 +1,12 @@
 # -*- coding: utf-8 -*-
+# Author: Ramoncjs
+# Time: 2020/4/16
+
+import java.lang as lang
+import base64
+from javax import swing
+from java.awt import Color
+from java.awt import Font
 from burp import IBurpExtender
 from burp import IHttpListener
 from burp import IMessageEditorTabFactory
@@ -6,29 +14,20 @@ from burp import IMessageEditorTab
 from burp import IParameter
 from burp import ITab
 from pyDes import des, PAD_PKCS5, ECB
-import java.lang as lang
-import base64
-from javax import swing
-from java.awt import Color
-from java.awt import Font
 
-# 请求体中待解密参数名称
-param = 'name'
-# Des加密算法  key,IV
-secret_key = 'IuFWKUut'
-iv = 'IuFWKUut'
+param = 'Null'
+secret_key = 'Null'
+iv = 'Null'
 
 
 class BurpExtender(IBurpExtender, IMessageEditorTabFactory, IHttpListener, ITab):
     def registerExtenderCallbacks(self, callbacks):
         self._callbacks = callbacks
         self._helpers = callbacks.getHelpers()
-        callbacks.setExtensionName("unCryptoTest")
+        callbacks.setExtensionName("Des Decrypt")
         # 初始化UI
         self.TabUI()
         self._callbacks.addSuiteTab(self)
-
-        # register ourselves as a message editor tab factory
         callbacks.registerMessageEditorTabFactory(self)
 
     # 实现IMessageEditorTabFactory方法
@@ -39,7 +38,7 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory, IHttpListener, ITab)
 
     # 实现Itab接口
     def getTabCaption(self):
-        return 'SetName'
+        return 'Des Decrypt'
 
     def getUiComponent(self):
         return self.tab
@@ -47,104 +46,194 @@ class BurpExtender(IBurpExtender, IMessageEditorTabFactory, IHttpListener, ITab)
     # 实现新窗口功能与UI
     def TabUI(self):
         self.tab = swing.JPanel()
-        self.layout = swing.GroupLayout(self.tab)
-        self.tab.setLayout(self.layout)
-
-        self.bar = swing.JSeparator(swing.SwingConstants.HORIZONTAL)
+        layout = swing.GroupLayout(self.tab)
+        self.tab.setLayout(layout)
 
         self.titleLabel = swing.JLabel("DES Plugin")
         self.titleLabel.setFont(Font("Tahoma", 1, 16))
-        self.titleLabel.setForeground(Color(235, 136, 0))
+        self.titleLabel.setForeground(Color(135, 206, 250))
 
         self.infoLabel = swing.JLabel("Please enter the parameters to be decrypted and DES's Key and IV.")
         self.infoLabel.setFont(Font("Tahoma", 0, 12))
 
-        self.keyLabel = swing.JLabel("RSA keys")
+        self.keyLabel = swing.JLabel("Des Plugin Params")
         self.keyLabel.setFont(Font("Tahoma", 1, 12))
-
-        self.setkeyButton = swing.JButton("  setKey   ", actionPerformed=self.setKey)
-        self.setIVButton = swing.JButton("   setIV    ", actionPerformed=self.setIV)
-        self.setParamButton = swing.JButton("setParam", actionPerformed=self.setParam)
 
         self.setKeyTextArea = swing.JTextArea("")
         self.setIVTextArea = swing.JTextArea("")
         self.setParamTextArea = swing.JTextArea("")
 
-        # 设置水平组
-        self.hGroup = self.layout.createSequentialGroup()
-        self.hGroup.addGap(15)
-        self.hGroup.addGroup(self.layout.createParallelGroup()
-                                       .addComponent(self.titleLabel)
-                                       .addComponent(self.infoLabel)
-                                       .addComponent(self.keyLabel)
-                             )
-        self.hGroup.addGroup(self.layout.createParallelGroup()
-                             .addComponent(self.setkeyButton)
-                             .addComponent(self.setIVButton)
-                             .addComponent(self.setParamButton)
-                             )
-        self.hGroup.addGap(100)
-        self.hGroup.addGroup(self.layout.createParallelGroup()
-                             .addComponent(self.setKeyTextArea, swing.GroupLayout.PREFERRED_SIZE, 200,
-                                           swing.GroupLayout.PREFERRED_SIZE)
-                             .addComponent(self.setIVTextArea, swing.GroupLayout.PREFERRED_SIZE, 200,
-                                           swing.GroupLayout.PREFERRED_SIZE)
-                             .addComponent(self.setParamTextArea, swing.GroupLayout.PREFERRED_SIZE, 200,
-                                           swing.GroupLayout.PREFERRED_SIZE)
-                             .addGap(15)
-                             )
-        self.layout.setHorizontalGroup(self.hGroup)
+        self.setkeyButton = swing.JButton("  setKey   ", actionPerformed=self.setKey)
+        self.setIVButton = swing.JButton("   setIV    ", actionPerformed=self.setIV)
+        self.setParamButton = swing.JButton("setParam", actionPerformed=self.setParam)
 
-        # 设置垂直组
-        self.vGroup = self.layout.createSequentialGroup()
-        self.vGroup.addGap(15)
+        self.logLabel = swing.JLabel("Log")
+        self.logLabel.setFont(Font("Tahoma", 1, 12))
 
-        self.vGroup.addGroup(self.layout.createParallelGroup()
-                             .addComponent(self.titleLabel)
-                             )
-        self.vGroup.addGap(15)
-        self.vGroup.addGroup(self.layout.createParallelGroup()
-                             .addComponent(self.infoLabel)
-                             )
-        self.vGroup.addGap(15)
-        self.vGroup.addGroup(self.layout.createParallelGroup()
-                             .addComponent(self.keyLabel)
-                             )
+        self.logPane = swing.JScrollPane()
+        self.logArea = swing.JTextArea("Logs.\n")
+        self.logArea.setLineWrap(True)
+        self.logPane.setViewportView(self.logArea)
 
-        self.vGroup.addGap(15)
-        self.vGroup.addGroup(self.layout.createParallelGroup()
-                             .addComponent(self.setkeyButton)
-                             .addComponent(self.setKeyTextArea, swing.GroupLayout.PREFERRED_SIZE, 40,
-                                           swing.GroupLayout.PREFERRED_SIZE)
-                             )
-        self.vGroup.addGap(15)
-        self.vGroup.addGroup(self.layout.createParallelGroup()
-                             .addComponent(self.setIVButton)
-                             .addComponent(self.setIVTextArea, swing.GroupLayout.PREFERRED_SIZE, 40,
-                                           swing.GroupLayout.PREFERRED_SIZE)
-                             )
-        self.vGroup.addGap(15)
-        self.vGroup.addGroup(self.layout.createParallelGroup()
-                             .addComponent(self.setParamButton)
-                             .addComponent(self.setParamTextArea, swing.GroupLayout.PREFERRED_SIZE, 40,
-                                           swing.GroupLayout.PREFERRED_SIZE)
-                             )
-        self.vGroup.addGap(15)
-        self.layout.setVerticalGroup(self.vGroup)
+        self.logClearButton = swing.JButton("   Clear    ", actionPerformed=self.logClear)
+        self.getParamsButton = swing.JButton("getParams", actionPerformed=self.getParams)
 
-    def setKey(self):
-        pass
+        self.bar = swing.JSeparator(swing.SwingConstants.HORIZONTAL)
+        self.bar2 = swing.JSeparator(swing.SwingConstants.HORIZONTAL)
 
-    def setIV(self):
-        pass
+        # 设置水平布局
+        # .addPreferredGap(swing.LayoutStyle.ComponentPlacement.UNRELATED)
+        layout.setHorizontalGroup(
+            layout.createParallelGroup()
+                .addGroup(layout.createSequentialGroup()
+                          .addGap(15)
+                          .addGroup(layout.createParallelGroup()
+                                    .addComponent(self.titleLabel)
+                                    .addComponent(self.infoLabel)
+                                    .addComponent(self.bar)
+                                    .addComponent(self.keyLabel)
+                                    .addGroup(layout.createSequentialGroup()
+                                              .addGroup(layout.createParallelGroup()
+                                                        .addComponent(self.setkeyButton)
+                                                        .addComponent(self.setIVButton)
+                                                        .addComponent(self.setParamButton))
+                                              .addGroup(layout.createParallelGroup()
+                                                        .addComponent(self.setKeyTextArea,
+                                                                      swing.GroupLayout.PREFERRED_SIZE, 300,
+                                                                      swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(self.setIVTextArea,
+                                                                      swing.GroupLayout.PREFERRED_SIZE, 300,
+                                                                      swing.GroupLayout.PREFERRED_SIZE)
+                                                        .addComponent(self.setParamTextArea,
+                                                                      swing.GroupLayout.PREFERRED_SIZE, 300,
+                                                                      swing.GroupLayout.PREFERRED_SIZE))
+                                              )
+                                    .addComponent(self.bar2)
+                                    .addComponent(self.logLabel)
+                                    .addGroup(layout.createSequentialGroup()
+                                              .addGroup(layout.createParallelGroup()
+                                                        .addComponent(self.logClearButton)
+                                                        .addComponent(self.getParamsButton)
+                                                        )
+                                              .addGroup(layout.createParallelGroup()
+                                                        .addComponent(self.logPane, swing.GroupLayout.PREFERRED_SIZE,
+                                                                      300, swing.GroupLayout.PREFERRED_SIZE)))
+                                    ))
 
-    def setParam(self):
-        pass
+        )
+
+        # 设置垂直布局
+        layout.setVerticalGroup(
+            layout.createParallelGroup()
+                .addGroup(layout.createSequentialGroup()
+                          .addGap(15)
+                          .addComponent(self.titleLabel)
+                          .addGap(10)
+                          .addComponent(self.infoLabel)
+                          .addGap(30)
+                          .addComponent(self.bar)
+                          .addGap(10)
+                          .addComponent(self.keyLabel)
+                          .addGap(20)
+                          .addGroup(layout.createSequentialGroup()
+                                    .addGroup(layout.createParallelGroup()
+                                              .addGroup(layout.createParallelGroup()
+                                                        .addGroup(layout.createSequentialGroup()
+                                                                  .addComponent(self.setkeyButton)
+                                                                  .addGap(20)
+                                                                  .addComponent(self.setIVButton)
+                                                                  .addGap(20)
+                                                                  .addComponent(self.setParamButton))
+                                                        )
+                                              .addGroup(layout.createParallelGroup()
+                                                        .addGroup(layout.createSequentialGroup()
+                                                                  .addComponent(self.setKeyTextArea,
+                                                                                swing.GroupLayout.PREFERRED_SIZE, 30,
+                                                                                swing.GroupLayout.PREFERRED_SIZE)
+                                                                  .addGap(20)
+                                                                  .addComponent(self.setIVTextArea,
+                                                                                swing.GroupLayout.PREFERRED_SIZE, 30,
+                                                                                swing.GroupLayout.PREFERRED_SIZE)
+                                                                  .addGap(20)
+                                                                  .addComponent(self.setParamTextArea,
+                                                                                swing.GroupLayout.PREFERRED_SIZE, 30,
+                                                                                swing.GroupLayout.PREFERRED_SIZE))
+                                                        )
+                                              )
+                                    )
+                          .addGap(40)
+                          .addComponent(self.bar2)
+                          .addGap(10)
+                          .addComponent(self.logLabel)
+                          .addGap(10)
+                          .addGroup(layout.createParallelGroup()
+                                    .addGroup(layout.createSequentialGroup()
+                                              .addComponent(self.getParamsButton)
+                                              .addGap(20)
+                                              .addComponent(self.logClearButton)
+
+                                              )
+                                    .addComponent(self.logPane, swing.GroupLayout.PREFERRED_SIZE, 500,
+                                                  swing.GroupLayout.PREFERRED_SIZE))
+                          )
+        )
+
+    def setKey(self, key):
+        global secret_key
+        pubText = self.setKeyTextArea.getText().strip('\n')
+        if pubText != None and len(pubText) > 0:
+            status = False
+            try:
+                secret_key = str((pubText).encode("utf-8"))
+                status = True
+            except:
+                pass
+            self.logPrint(status,'secret_key:' + secret_key)
+
+    def setIV(self, setiv):
+        global iv
+        pubText = self.setIVTextArea.getText().strip('\n')
+        if pubText != None and len(pubText) > 0:
+            status = False
+            try:
+                iv = str((pubText).encode("utf-8"))
+                status = True
+            except:
+                pass
+            self.logPrint(status,'iv:' + iv)
+
+    def setParam(self, setparam):
+        global param
+        pubText = self.setParamTextArea.getText().strip('\n')
+        if pubText != None and len(pubText) > 0:
+            status = False
+            try:
+                param = str((pubText).encode("utf-8"))
+                status = True
+            except:
+                pass
+            self.logPrint(status,'param:' + param)
+
+    def logClear(self, log):
+        self.logArea.setText("")
+
+    def getParams(self,params):
+        status = True
+        try:
+            self.logPrint(status,'secret_key:' + secret_key)
+            self.logPrint(status,'iv:' + iv)
+            self.logPrint(status,'param:' + param)
+        except:
+            pass
 
 
-#
+    def logPrint(self, status, data):
+        statusList = ["[!] Failure: ", "[+] Success: "]
+        message = statusList[status] + data
+        self.logArea.append(message+'\n')
+
+
 # 实现 IMessageEditorTab
-#
 class DataInputTab(IMessageEditorTab):
     def __init__(self, extender, controller, editable):
         self._extender = extender
