@@ -1,0 +1,2 @@
+# BurpExtender_UncryptDES
+进行Android测试时，对采用DES加密方式的sign参数进行解密与修改
